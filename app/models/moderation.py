@@ -9,4 +9,4 @@ class ModerationResult(Base):
     text = Column(String, unique=True, index=True)
     task_id = Column(String)
     status = Column(String)
-    results = Column(JSON)
+    results = Column(String)

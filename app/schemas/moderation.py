@@ -10,5 +10,5 @@ class ModerationResponse(BaseModel):
 
 class ModerationResultResponse(BaseModel):
     task_id: str
-    result: Json
+    result: dict
     status: str
