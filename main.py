@@ -1,10 +1,13 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
+from loguru import logger
 from app.api.moderation import moderation_router, limiter
-from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
+from app.configs.db_config import Base, engine
 # from slowapi.util import get_remote_address
+logger.info("Creating all tables in the database")
+Base.metadata.create_all(engine)
+
 
 app = FastAPI(title="Content Moderation API")
 app.state.limiter = limiter
