@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from pydantic import BaseModel, Json
 
 
 class ModerationRequest(BaseModel):
@@ -9,5 +10,5 @@ class ModerationResponse(BaseModel):
 
 class ModerationResultResponse(BaseModel):
     task_id: str
-    result: str
+    result: Json
     status: str
