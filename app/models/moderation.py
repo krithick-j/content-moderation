@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer
+from sqlalchemy import Column, String, Integer, JSON
 from app.configs.db_config import Base
 
 
@@ -9,3 +9,4 @@ class ModerationResult(Base):
     text = Column(String, unique=True, index=True)
     task_id = Column(String)
     status = Column(String)
+    results = Column(String)

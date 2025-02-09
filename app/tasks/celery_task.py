@@ -10,6 +10,7 @@ from app.configs.log_config import setup_logger
 from celery.exceptions import MaxRetriesExceededError
 from sqlalchemy.orm import Session
 from app.models.moderation import ModerationResult
+from app.repo.moderation import get_moderation_result_by_text
 
 
 # Ensure logger is set up
@@ -29,7 +30,7 @@ def moderate_text_task(self, text: str):
         db: Session = SessionLocal()
         
         # Update status to "PROCESSING"
-        moderation_entry = db.query(ModerationResult).filter_by(text=text).first()
+        moderation_entry = get_moderation_result_by_text(text, db)
         if moderation_entry:
             moderation_entry.status = "PROCESSING"
             db.commit()
@@ -49,15 +50,15 @@ def moderate_text_task(self, text: str):
         MODERATION_MODEL = os.getenv("MODERATION_MODEL")
 
         response = client.moderations.create(model=MODERATION_MODEL, input=text)
-        
+        response_json = response.to_json()
         # Cache result for 1 hour
-        redis_client.setex(text, 3600, response.to_json())
+        redis_client.setex(text, 3600, response_json)
         logger.info("Response cached for text")
 
         # Update status to "COMPLETED" and save result
         if moderation_entry:
             moderation_entry.status = "COMPLETED"
-            moderation_entry.result = response.results  # Store API response
+            moderation_entry.result = response_json  # Store API response
             db.commit()
 
         return response.results
