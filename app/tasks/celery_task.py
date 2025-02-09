@@ -30,10 +30,9 @@ def moderate_text_task(text: str):
         # Call OpenAI Moderation API
         client = OpenAI(api_key=OPENAIKEY)
         response = client.moderations.create(model="omni-moderation-latest", input=text)
-        logger.info(f"Response from OpenAI for text '{text}': {response}")
         
         # Cache result for 1 hour
-        redis_client.setex(text, 3600, json.dumps(response.results))
+        redis_client.setex(text, 3600, response.to_json())
         logger.info("Response cached for text")
 
         return response.results
