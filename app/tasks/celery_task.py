@@ -3,18 +3,18 @@ import json
 from dotenv import load_dotenv
 from app.configs.celery_config import celery
 from app.configs.redis_config import redis_client
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 from loguru import logger
 from app.configs.log_config import setup_logger
-
+from celery.exceptions import MaxRetriesExceededError
 
 # Ensure logger is set up
 setup_logger()
 load_dotenv()
 OPENAIKEY = os.getenv("OPENAI_API_KEY")
 
-@celery.task(name="moderate_text_task")
-def moderate_text_task(text: str):
+@celery.task(name="moderate_text_task", bind=True, max_retries=3, default_retry_delay=60)
+def moderate_text_task(self, text: str):
     """
     Background task for text moderation.
     """
@@ -36,6 +36,13 @@ def moderate_text_task(text: str):
         logger.info("Response cached for text")
 
         return response.results
+    except OpenAIError as e:
+        logger.error(f"OpenAIError in moderate_text_task: {str(e)}")
+        try:
+            self.retry(exc=e)
+        except MaxRetriesExceededError:
+            logger.error("Max retries exceeded for moderate_text_task")
+            return {"error": "Service unavailable, please try again later."}
     except Exception as e:
         logger.error(f"Error in moderate_text_task: {str(e)}")
         return {"error": str(e)}
