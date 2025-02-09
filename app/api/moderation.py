@@ -55,6 +55,7 @@ async def get_moderation_result(request: Request, task_id: str):
         return ModerationResultResponse(task_id=task_id, result=task_result.result, status="PENDING")
     elif task_result.state == "SUCCESS":
         logger.info(f"Task {task_id} completed successfully")
+        logger.info(f"Task result type: {type(task_result.result)}")
         return ModerationResultResponse(task_id=task_id, result=task_result.result, status="SUCCESS")
     else:
         logger.error(f"Task {task_id} failed with error: {str(task_result.info)}")
