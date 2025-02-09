@@ -8,6 +8,7 @@ from app.configs.log_config import setup_logger
 from app.configs.db_config import get_db
 from app.configs.redis_config import redis_client
 from app.configs.celery_config import celery
+from app.schemas.health import HealthCheckResponse
 
 setup_logger()
 metrics_router = APIRouter()
@@ -25,7 +26,7 @@ def metrics():
     """Expose Prometheus metrics endpoint."""
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-@metrics_router.get("/health")
+@metrics_router.get("/health", response_model=HealthCheckResponse)
 async def health_check(db: Session = Depends(get_db)):
     """Health check endpoint for database, Redis, and Celery."""
     status = {"status": "healthy"}
@@ -35,6 +36,7 @@ async def health_check(db: Session = Depends(get_db)):
         db.execute(text('SELECT 1'))  # Executes a simple query to test DB connection
         status["database"] = "available"
     except Exception as e:
+        status["status"] = "unhealthy"
         status["database"] = f"unavailable - {str(e)}"
         logger.error(f"Database connection error: {e}")
 
@@ -43,6 +45,7 @@ async def health_check(db: Session = Depends(get_db)):
         redis_client.ping()
         status["redis"] = "available"
     except Exception as e:
+        status["status"] = "unhealthy"
         status["redis"] = f"unavailable - {str(e)}"
         logger.error(f"Redis connection error: {e}")
 
@@ -51,7 +54,13 @@ async def health_check(db: Session = Depends(get_db)):
         celery.control.ping(timeout=1)
         status["celery"] = "available"
     except Exception as e:
+        status["status"] = "unhealthy"
         status["celery"] = f"unavailable - {str(e)}"
         logger.error(f"Celery connection error: {e}")
 
-    return status
+    return HealthCheckResponse(
+        status=status["status"],
+        database=status["database"],
+        redis=status["redis"],
+        celery=status["celery"]
+    )
