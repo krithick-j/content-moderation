@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 from loguru import logger
 from app.configs.log_config import setup_logger
-from app.configs.db_config import get_db
+from app.configs.db_config import get_async_db
 from app.configs.redis_config import redis_client
 from app.configs.celery_config import celery
 from app.schemas.health import HealthCheckResponse
@@ -27,13 +27,13 @@ def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 @metrics_router.get("/health", response_model=HealthCheckResponse)
-async def health_check(db: Session = Depends(get_db)):
+async def health_check(db: Session = Depends(get_async_db)):
     """Health check endpoint for database, Redis, and Celery."""
     status = {"status": "healthy"}
 
     # Check Database Connection
     try:
-        db.execute(text('SELECT 1'))  # Executes a simple query to test DB connection
+        await db.execute(text('SELECT 1'))  # Executes a simple query to test DB connection
         status["database"] = "available"
     except Exception as e:
         status["status"] = "unhealthy"
