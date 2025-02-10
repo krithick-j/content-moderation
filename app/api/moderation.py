@@ -6,10 +6,12 @@ from app.tasks.celery_task import moderate_text_task
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.models.moderation import ModerationResult
-from sqlalchemy.orm import Session
-from app.configs.db_config import get_db
+from app.configs.db_config import get_async_db
+from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 from app.repo.moderation import save_moderation_result
+from celery.result import AsyncResult
+from app.repo.moderation import get_moderation_result_by_text
 setup_logger()
 load_dotenv()
 moderation_router = APIRouter()
@@ -18,12 +20,12 @@ moderation_router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
 
 
-@moderation_router.post("/moderate/text", response_model=ModerationResponse)
+@moderation_router.post("/moderate/text")
 @limiter.limit("5/minute")  # Limit to 5 requests per minute per IP
 async def moderate_text(
-    request: Request,  # Inject the Request object for rate limiting
-    moderation_request: ModerationRequest,  # Validate the request body
-    db: Session = Depends(get_db)
+    request: Request,  
+    moderation_request: ModerationRequest,  
+    db: AsyncSession = Depends(get_async_db)  # Use async session
 ):
     """
     Enqueue moderation task and return task ID.
@@ -31,32 +33,49 @@ async def moderate_text(
     try:
         text = moderation_request.text
         logger.info(f"Received text for moderation: {text}")
-        task = moderate_text_task.apply_async(args=[text])  # Run asynchronously
+
+        mod_result: ModerationResult = await get_moderation_result_by_text(text, db)
+        if mod_result:
+            logger.info(f"Moderation result: {mod_result} found in database for text: {text}")
+            return ModerationResponse(task_id=mod_result.task_id)
         
-        # Store the task in the database
-        moderation_result = ModerationResult(task_id=task.id, text=text, status="PENDING")
-        save_moderation_result(moderation_result, db)
+        # Run Celery task asynchronously
+        task = moderate_text_task.delay(text)
+
+        # Store the task in the database asynchronously
+        moderation_result = ModerationResult(task_id=task.id, text=text, status=task.state)
+        logger.info(f"Save moderation result for task {task.id} in database")
+        await save_moderation_result(moderation_result, db)
         logger.info(f"Task {task.id} enqueued for moderation")
         return ModerationResponse(task_id=task.id)
+    
     except Exception as e:
         logger.error(f"Error while enqueuing moderation task: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 @moderation_router.get("/moderate/result/{task_id}", response_model=ModerationResultResponse)
-@limiter.limit("10/minute")  # Limit to 10 requests per minute per IP
+@limiter.limit("10/minute")  
 async def get_moderation_result(request: Request, task_id: str):
     """
     Retrieve moderation result by task ID.
     """
     logger.info(f"Fetching result for task ID: {task_id}")
-    task_result = moderate_text_task.AsyncResult(task_id)
-    if task_result.state == "PENDING":
-        logger.info(f"Task {task_id} is still pending")
-        return ModerationResultResponse(task_id=task_id, result=task_result.result, status="PENDING")
-    elif task_result.state == "SUCCESS":
-        logger.info(f"Task {task_id} completed successfully")
-        logger.info(f"Task result type: {type(task_result.result)}")
-        return ModerationResultResponse(task_id=task_id, result=task_result.result, status="SUCCESS")
-    else:
-        logger.error(f"Task {task_id} failed with error: {str(task_result.info)}")
-        return {"status": "failed", "error": str(task_result.info)}
+    
+    try:
+        task_result = AsyncResult(task_id)
+        logger.info(f"Task {task_result} is still pending")
+        if task_result.state == "PENDING":
+            logger.info(f"Task {task_id} is still pending")
+            return ModerationResultResponse(task_id=task_id, result=None, status="PENDING")
+
+        elif task_result.state == "SUCCESS":
+            logger.info(f"Task {task_id} completed successfully")
+            return ModerationResultResponse(task_id=task_id, result=task_result.result, status="SUCCESS")
+
+        else:
+            logger.error(f"Task {task_id} failed with error: {str(task_result.info)}")
+            return {"status": "failed", "error": str(task_result.info)}
+
+    except Exception as e:
+        logger.error(f"Error fetching task result: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
