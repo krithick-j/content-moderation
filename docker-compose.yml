@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: content_moderation_db
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    container_name: content_moderation_api
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    entrypoint: >
+      sh -c "
+      export PGPASSWORD=${POSTGRES_PASSWORD} &&
+      echo 'Waiting for DB to be ready...' &&
+      until psql -h db -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c 'SELECT 1'; do
+        echo 'Postgres is unavailable - sleeping';
+        sleep 2;
+      done;
+      echo 'Postgres is ready - running Alembic migrations';
+      alembic upgrade head &&
+      uvicorn main:app --host 0.0.0.0 --port 8000"
+
+  redis:
+    image: redis:alpine
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  celery_worker:
+      build: .
+      container_name: celery_worker
+      depends_on:
+        api:
+          condition: service_started
+        redis:
+          condition: service_healthy
+      env_file:
+        - .env
+      volumes:
+        - .:/app
+        - logs:/app/logs
+      entrypoint: >
+        sh -c "
+        mkdir -p /app/logs &&
+        chmod -R 777 /app/logs &&
+        celery -A app.configs.celery_config worker 
+        --loglevel=info 
+        --logfile=/app/logs/celery.log 
+        --concurrency=4"
+
+volumes:
+  pg_data:
+  logs:
+    driver: local
