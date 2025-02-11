@@ -1,9 +1,10 @@
 Here's a comprehensive README.md for your Content Moderation API project:
 
+## Workflow Diagram
+![Architecture Diagram](./assets/architecture.png)
+
 ```markdown
 # Content Moderation API
-
-![Architecture Diagram](./assets/architecture.png)
 
 A high-performance content moderation API leveraging OpenAI's moderation models, built with FastAPI, Celery, and PostgreSQL. Designed for asynchronous processing and horizontal scaling.
 
