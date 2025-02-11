@@ -3,7 +3,6 @@ Here's a comprehensive README.md for your Content Moderation API project:
 ## Workflow Diagram
 ![Architecture Diagram](./assets/architecture.png)
 
-```markdown
 # Content Moderation API
 
 A high-performance content moderation API leveraging OpenAI's moderation models, built with FastAPI, Celery, and PostgreSQL. Designed for asynchronous processing and horizontal scaling.
@@ -37,7 +36,7 @@ A high-performance content moderation API leveraging OpenAI's moderation models,
 - OpenAI API Key
 
 ### Installation
-
+```markdown
 1. Clone the repository:
    ```bash
    git clone https://github.com/krithick-j/content-moderation.git
