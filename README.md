@@ -127,4 +127,3 @@ Common issues:
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-```
