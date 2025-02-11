@@ -93,7 +93,10 @@ A high-performance content moderation API leveraging OpenAI's moderation models,
 
 ## Workflow Diagram
 
+# POST API Flow
 ![POST API Diagram](./assets/moderate_text_post.png)
+
+# GET API Flow
 ![GET API Diagram](./assets/moderate_result_get.png)
 
 ## Development
