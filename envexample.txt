@@ -1,9 +1,9 @@
-REDIS_HOST=localhost
+REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_DB=0
-REDIS_URL=redis://localhost:6379/0
+REDIS_URL=redis://redis:6379/0
 LOG_LEVEL=INFO
 OPENAI_API_KEY=example-key
-DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5432/db_name
-DATABASE_ASYNC_URL=postgresql+asyncpg://postgres:postgres123@localhost:5432/db_name
+DATABASE_URL=postgresql+psycopg://postgres:password@content_moderation_db:5432/db_name
+DATABASE_ASYNC_URL=postgresql+asyncpg://postgres:postgres123@content_moderation_db:5432/db_name
 MODERATION_MODEL=omni-moderation-latest

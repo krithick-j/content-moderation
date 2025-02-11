@@ -55,6 +55,29 @@ async def get_moderation_result_by_text(text: str, db: AsyncSession) -> Moderati
         logger.error(f"An error occurred while retrieving the moderation result: {e}")
         return None
     
+async def get_moderation_result_by_id(id: int, db: AsyncSession) -> ModerationResult:
+    """
+    Retrieve a moderation result from the database by text.
+
+    :param text: The text to filter the moderation result by.
+    :param db: The database session to use for querying the result.
+    :return: The moderation result object if found, else None.
+    """
+    
+    try:
+        result = await db.execute(select(ModerationResult).filter(ModerationResult.id == id))
+        moderation_result = result.scalars().first()  # Extract the actual record
+        
+        if moderation_result:
+            logger.info(f"Moderation result: {moderation_result.task_id} retrieved successfully for text: {id}")
+        else:
+            logger.info(f"No moderation result found for text: {id}")
+        
+        return moderation_result
+    except Exception as e:
+        logger.error(f"An error occurred while retrieving the moderation result: {e}")
+        return None
+    
 ### **2. Function to Store Result in PostgreSQL**
 #This function will be responsible for saving the Celery task result in PostgreSQL.
 

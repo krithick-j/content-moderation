@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 from app.repo.moderation import save_moderation_result
 from celery.result import AsyncResult
-from app.repo.moderation import get_moderation_result_by_text
+from app.repo.moderation import get_moderation_result_by_text, get_moderation_result_by_id
 setup_logger()
 load_dotenv()
 moderation_router = APIRouter()
@@ -63,6 +63,12 @@ async def get_moderation_result(request: Request, task_id: str):
     
     try:
         task_result = AsyncResult(task_id)
+        if not task_result:
+            mod_result: ModerationResult = await get_moderation_result_by_id(task_id)
+            if not mod_result:
+                logger.error(f"Task {task_id} not found in database")
+                return {"status": "failed", "error": "Task not found"}
+            return ModerationResultResponse(task_id=task_id, result=mod_result.results, status=mod_result.status)
         logger.info(f"Task {task_result} is still pending")
         if task_result.state == "PENDING":
             logger.info(f"Task {task_id} is still pending")
