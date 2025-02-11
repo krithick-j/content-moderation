@@ -56,7 +56,7 @@ A high-performance content moderation API leveraging OpenAI's moderation models,
 
 4. Verify containers are running:
    ```bash
-   docker-compose ps
+   docker ps
    ```
 
 ## Environment Variables
@@ -116,31 +116,15 @@ Logs are stored in:
 Common issues:
 1. **Database Connection Failures**:
    - Verify `.env` credentials
-   - Check PostgreSQL logs: `docker-compose logs db`
+   - Check PostgreSQL logs: `docker compose logs db`
 
 2. **Celery Task Queue Backlog**:
-   - Scale workers: `docker-compose up --scale celery_worker=4`
+   - Scale workers: `docker compose up --scale celery_worker=4`
 
 3. **Rate Limit Errors**:
    - Adjust rate limits in `app/api/moderation.py`
 
-## Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/new-moderation`
-3. Commit changes: `git commit -m 'Add new moderation feature'`
-4. Push to branch: `git push origin feature/new-moderation`
-5. Open a Pull Request
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-**Note**: Before deploying to production, ensure to:
-1. Configure proper TLS certificates
-2. Set up persistent storage for PostgreSQL
-3. Implement proper secret management
-4. Configure monitoring alerts
 ```
